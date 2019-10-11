@@ -1,17 +1,14 @@
 package com.example.moviediscovery;
 
 import android.os.AsyncTask;
+import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
-import android.os.Bundle;
-import android.widget.TextView;
-
 import info.movito.themoviedbapi.TmdbApi;
-import info.movito.themoviedbapi.TmdbMovies;
-import info.movito.themoviedbapi.model.MovieDb;
+import info.movito.themoviedbapi.model.Discover;
+import info.movito.themoviedbapi.model.core.MovieResultsPage;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -21,27 +18,30 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//        new MovieFetcher().execute();
-
-        FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
-        fragmentTransaction.add(new ViewPagerFragment(), "ViewPager");
-        fragmentTransaction.addToBackStack(null);
-        fragmentTransaction.commit();
+        new MovieFetcher().execute();
     }
 
-    private class MovieFetcher extends AsyncTask<Void, Void, MovieDb> {
+    private class MovieFetcher extends AsyncTask<Void, Void, MovieResultsPage> {
 
         @Override
-        protected MovieDb doInBackground(Void... voids) {
-            TmdbMovies movies = new TmdbApi(API_KEY).getMovies();
-            return movies.getMovie(5353, "en");
+        protected MovieResultsPage doInBackground(Void... voids) {
+            Discover discover = new Discover().page(1).primaryReleaseYear(2019);
+            return new TmdbApi(API_KEY).getDiscover().getDiscover(discover);
         }
 
         @Override
-        protected void onPostExecute(MovieDb movieDb) {
-//            TextView textView = findViewById(R.id.text1);
-//            textView.setText(movieDb.getTitle() + ": " + movieDb.getOverview());
-            super.onPostExecute(movieDb);
+        protected void onPostExecute(MovieResultsPage movieResultsPage) {
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("movieResultsPage", movieResultsPage);
+
+            RecyclerViewFragment recyclerViewFragment = new RecyclerViewFragment();
+            recyclerViewFragment.setArguments(bundle);
+
+            FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+            fragmentTransaction.replace(R.id.fragment_container, recyclerViewFragment, "ViewPager");
+            fragmentTransaction.commit();
+
+            super.onPostExecute(movieResultsPage);
         }
     }
 }
