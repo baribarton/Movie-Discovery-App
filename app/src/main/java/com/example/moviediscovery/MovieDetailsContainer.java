@@ -3,13 +3,10 @@ package com.example.moviediscovery;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -24,6 +21,8 @@ import androidx.palette.graphics.Palette;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
+
+import java.util.Objects;
 
 import info.movito.themoviedbapi.model.MovieDb;
 
@@ -53,12 +52,16 @@ public class MovieDetailsContainer extends AppCompatActivity {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
-        movie = (MovieDb) getIntent().getExtras().getSerializable("MOVIE");
+        movie = (MovieDb) Objects.requireNonNull(getIntent().getExtras()).getSerializable("MOVIE");
+
+        if (movie == null) {
+            Toast.makeText(MovieDetailsContainer.this, "Error getting movie", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         ((TextView) toolbar.findViewById(R.id.toolbar_title)).setText(movie.getTitle());
 
         appBarImage = findViewById(R.id.app_bar_image);
-
-        //TODO if movie can't be retrieved then display an error message
 
         // Get an image to display on the AppBar
         String movieImagePath = movie.getBackdropPath();
@@ -123,7 +126,7 @@ public class MovieDetailsContainer extends AppCompatActivity {
             public void onBitmapFailed(Exception e, Drawable errorDrawable) {
                 appBarImage.setImageDrawable(errorDrawable);
                 containerProgressBar.setVisibility(View.GONE);
-                Toast.makeText(MovieDetailsContainer.this, "Something went wrong", Toast.LENGTH_LONG).show();
+                Toast.makeText(MovieDetailsContainer.this, Utils.GENERAL_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
                 createMovieDetailsFragment();
                 Log.e(TAG, e.getMessage());
                 e.printStackTrace();
@@ -144,21 +147,9 @@ public class MovieDetailsContainer extends AppCompatActivity {
      */
     private void setColorTheme(int colorTheme) {
         this.colorTheme = colorTheme;
-        setStatusBarColor(colorTheme);
+        Utils.setStatusBarColor(MovieDetailsContainer.this, colorTheme);
         toolbar.setBackgroundColor(colorTheme);
         setScrimColor(colorTheme);
-    }
-
-    /**
-     * Changes the status bar color of the current window
-     */
-    private void setStatusBarColor(int newColor) {
-        if (Build.VERSION.SDK_INT >= 21) {
-            Window window = getWindow();
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            window.setStatusBarColor(newColor);
-        }
     }
 
     /**

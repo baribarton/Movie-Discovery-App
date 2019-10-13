@@ -1,6 +1,7 @@
 package com.example.moviediscovery;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -27,6 +28,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import info.movito.themoviedbapi.TmdbApi;
 import info.movito.themoviedbapi.model.Discover;
@@ -39,10 +41,9 @@ public class MoviesListFragment extends Fragment {
         an example, I will leave it here. also, these API keys are limited based on IP Address, so
         the security impact is low
      */
-    private static final String API_KEY = "f879d096ee67e768d6d9f09ca12e0ae9";
-
-    private static final String MOVIE_RESULTS_PAGES_KEY = "movies";
+    public static final String API_KEY = "f879d096ee67e768d6d9f09ca12e0ae9";
     public final static int COLUMNS = 2;
+    private final static long MINIMUM_DAYS_RANGE = 21;
     private RecyclerViewAdapter recyclerViewAdapter;
 
 
@@ -77,7 +78,17 @@ public class MoviesListFragment extends Fragment {
             DateRange.getInstance().setEndDate(simpleDateFormat.format(new Date()));
         }
 
-        new MovieFetcher(getActivity(), recyclerViewAdapter, DateRange.getInstance()).execute();
+        if (!Utils.isNetworkAvailable(view.getContext())) {
+            Toast.makeText(view.getContext(), Utils.CONNECTIVITY_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+            return;
+        }
+        // Don't make multiple API calls
+        if (savedInstanceState == null) {
+            new MovieFetcher(getActivity(), recyclerViewAdapter, DateRange.getInstance()).execute();
+        } else {
+            recyclerViewAdapter.setMovies(movies);
+        }
+
         setFloatingActionButtonOnClick();
     }
 
@@ -89,8 +100,21 @@ public class MoviesListFragment extends Fragment {
         private DateRange dateRange;
         private RecyclerViewAdapter recyclerViewAdapter;
 
-        private static final int MAX_PAGE_COUNT = 5;
+        /*
+            I max out the page count at 15 as a very naiive approach. Ideally, I would
+            implement a pull to refresh scroll view or something similar so only a small set of movies
+            are loaded at a time.
+         */
 
+        private static final int MAX_PAGE_COUNT = 50;
+
+        /**
+         * Constructor
+         *
+         * @param activity            The parent activity
+         * @param recyclerViewAdapter The adapter to the recyclerView
+         * @param dateRange           The date range for the movies
+         */
         public MovieFetcher(Activity activity, RecyclerViewAdapter recyclerViewAdapter, DateRange dateRange) {
             this.activityWeakReference = new WeakReference<>(activity);
             this.recyclerViewAdapter = recyclerViewAdapter;
@@ -99,6 +123,7 @@ public class MoviesListFragment extends Fragment {
 
         @Override
         protected List<MovieDb> doInBackground(Void... voids) {
+
             Discover initialDiscover = new Discover().
                     page(1).
                     releaseDateGte(dateRange.getStartDate()).
@@ -118,7 +143,25 @@ public class MoviesListFragment extends Fragment {
                         releaseDateGte(dateRange.getStartDate()).
                         releaseDateLte(dateRange.getEndDate());
 
-                MovieResultsPage movieResultsPage = new TmdbApi(API_KEY).getDiscover().getDiscover(discover);
+                Context context = activityWeakReference.get();
+
+                // Check network before making each call
+                if (!Utils.isNetworkAvailable(context)) {
+                    Toast.makeText(context, Utils.CONNECTIVITY_ERROR_MESSAGE, Toast.LENGTH_SHORT).show();
+                    sortDescending(movies);
+                    return movies;
+                }
+
+                MovieResultsPage movieResultsPage;
+
+                // Just return the movies that were retrieved if something went wrong during API call
+                try {
+                    movieResultsPage = new TmdbApi(API_KEY).getDiscover().getDiscover(discover);
+                } catch (Exception e) {
+                    sortDescending(movies);
+                    e.printStackTrace();
+                    return movies;
+                }
                 filter(movies, movieResultsPage);
             }
 
@@ -169,13 +212,11 @@ public class MoviesListFragment extends Fragment {
         @Override
         protected void onPostExecute(List<MovieDb> movies) {
             recyclerViewAdapter.setMovies(movies);
-            recyclerViewAdapter.notifyDataSetChanged();
             ProgressBar dateProgressBar = activityWeakReference.get().findViewById(R.id.progress_bar);
             dateProgressBar.setVisibility(View.GONE);
             super.onPostExecute(movies);
         }
     }
-
 
     /**
      * Sets the FAB on click listener
@@ -192,19 +233,20 @@ public class MoviesListFragment extends Fragment {
             int month = now.get(Calendar.MONTH);
             int day = now.get(Calendar.DAY_OF_MONTH);
 
-            if (DateRange.getInstance().getStartDate() != null) {
-                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
-                try {
-                    Date date = simpleDateFormat.parse(DateRange.getInstance().getStartDate());
-                    Calendar calendar = Calendar.getInstance();
-                    calendar.setTime(date);
-                    year = calendar.get(Calendar.YEAR);
-                    month = calendar.get(Calendar.MONTH);
-                    day = calendar.get(Calendar.DAY_OF_MONTH);
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+
+            // Try to get the DateRange dates
+            try {
+                Date date = simpleDateFormat.parse(DateRange.getInstance().getStartDate());
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(date);
+                year = calendar.get(Calendar.YEAR);
+                month = calendar.get(Calendar.MONTH);
+                day = calendar.get(Calendar.DAY_OF_MONTH);
+            } catch (ParseException e) {
+                e.printStackTrace();
             }
+
             DatePickerDialog datePickerDialog = DatePickerDialog.newInstance(createDatePickerDialogOnClick(), year, month, day);
             datePickerDialog.setOnCancelListener(dialog -> dateProgressBar.setVisibility(View.GONE));
             datePickerDialog.show(getActivity().getFragmentManager(), "DatePickerDialog");
@@ -219,32 +261,64 @@ public class MoviesListFragment extends Fragment {
     private DatePickerDialog.OnDateSetListener createDatePickerDialogOnClick() {
         return (view, yearStart, monthOfYearStart, dayOfMonthStart, yearEnd, monthOfYearEnd, dayOfMonthEnd) -> {
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+
+            // start date
             Calendar calendar = Calendar.getInstance();
             calendar.set(yearStart, monthOfYearStart, dayOfMonthStart, 0, 0);
-            String startDate = simpleDateFormat.format(calendar.getTime());
+            String startDateString = simpleDateFormat.format(calendar.getTime());
 
+            // end date
             calendar.set(yearEnd, monthOfYearEnd, dayOfMonthEnd, 0, 0);
-            String endDate = simpleDateFormat.format(calendar.getTime());
+            String endDateString = simpleDateFormat.format(calendar.getTime());
             boolean isValidDate = false;
 
+            // Get whether or not it is a valid date
             try {
-                isValidDate = simpleDateFormat.parse(startDate).before(simpleDateFormat.parse(endDate)) ||
-                        simpleDateFormat.parse(startDate).equals(simpleDateFormat.parse(endDate));
+                Date startDate = simpleDateFormat.parse(startDateString);
+                Date endDate = simpleDateFormat.parse(endDateString);
+                long dayDifference = getDifferenceDays(startDate, endDate);
+
+                isValidDate = (startDate.before(endDate) || startDate.equals(endDate)) &&
+                        dayDifference >= MINIMUM_DAYS_RANGE;
             } catch (ParseException e) {
                 e.printStackTrace();
-                Toast.makeText(getActivity(), "Something went wrong.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), Utils.GENERAL_ERROR_MESSAGE, Toast.LENGTH_SHORT).show();
                 return;
             }
 
+            ProgressBar dateProgressBar = getActivity().findViewById(R.id.progress_bar);
+            // Check if the date is valid before calling API
             if (isValidDate) {
-                DateRange.getInstance().setStartDate(startDate);
-                DateRange.getInstance().setEndDate(endDate);
+                DateRange.getInstance().setStartDate(startDateString);
+                DateRange.getInstance().setEndDate(endDateString);
+
+                Context context = getActivity().getApplicationContext();
+                if (!Utils.isNetworkAvailable(context)) {
+                    Toast.makeText(context, Utils.CONNECTIVITY_ERROR_MESSAGE, Toast.LENGTH_SHORT).show();
+                    dateProgressBar.setVisibility(View.GONE);
+                    return;
+                }
+
                 new MovieFetcher(getActivity(), recyclerViewAdapter, DateRange.getInstance()).execute();
-                ProgressBar dateProgressBar = getActivity().findViewById(R.id.progress_bar);
+
                 dateProgressBar.setVisibility(View.VISIBLE);
             } else {
-                Toast.makeText(getActivity(), "Invalid date range", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), "Invalid date range. Must be at least 3 weeks",
+                        Toast.LENGTH_SHORT).show();
+                dateProgressBar.setVisibility(View.GONE);
             }
         };
+    }
+
+    /**
+     * Calculates the difference between two dates and returns the value in days
+     *
+     * @param date1 The first date
+     * @param date2 The second date
+     * @return The difference in days
+     */
+    private static long getDifferenceDays(Date date1, Date date2) {
+        long diff = date2.getTime() - date1.getTime();
+        return TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS);
     }
 }

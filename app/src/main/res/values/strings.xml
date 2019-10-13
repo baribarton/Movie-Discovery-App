@@ -3,4 +3,6 @@
     <string name="full_title">Full Title</string>
     <string name="overview">Overview</string>
     <string name="release_date">Original Release Date</string>
+    <string name="revenue">Revenue</string>
+    <string name="runtime">Runtime</string>
 </resources>
