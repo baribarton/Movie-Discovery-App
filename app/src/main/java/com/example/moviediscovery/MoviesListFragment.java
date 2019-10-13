@@ -108,7 +108,7 @@ public class MoviesListFragment extends Fragment {
             are loaded at a time.
          */
 
-        private static final int MAX_PAGE_COUNT = 50;
+        private static final int MAX_PAGE_COUNT = 15;
 
         /**
          * Constructor
