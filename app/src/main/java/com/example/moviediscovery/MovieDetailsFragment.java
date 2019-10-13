@@ -26,6 +26,9 @@ public class MovieDetailsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         int colorTheme = getArguments().getInt(MovieDetailsContainer.COLOR_THEME_KEY);
+        if (colorTheme == 0) {
+            colorTheme = getResources().getColor(R.color.colorPrimaryDark);
+        }
 
         setDynamicTextViews(view, colorTheme);
         setStaticTextViewsColor(view, colorTheme);

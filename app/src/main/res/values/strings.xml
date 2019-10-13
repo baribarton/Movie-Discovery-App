@@ -2,5 +2,5 @@
     <string name="app_name">MovieDiscovery</string>
     <string name="full_title">Full Title</string>
     <string name="overview">Overview</string>
-    <string name="release_date">Release Date</string>
+    <string name="release_date">Original Release Date</string>
 </resources>

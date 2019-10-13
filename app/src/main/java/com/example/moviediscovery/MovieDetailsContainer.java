@@ -78,6 +78,9 @@ public class MovieDetailsContainer extends AppCompatActivity {
                 .into(target);
     }
 
+    /**
+     * Creates the movie details fragment and commits it
+     */
     private void createMovieDetailsFragment() {
         Bundle bundle = new Bundle();
         bundle.putSerializable(MOVIE_BUNDLE_KEY, movie);
@@ -121,6 +124,7 @@ public class MovieDetailsContainer extends AppCompatActivity {
                 appBarImage.setImageDrawable(errorDrawable);
                 containerProgressBar.setVisibility(View.GONE);
                 Toast.makeText(MovieDetailsContainer.this, "Something went wrong", Toast.LENGTH_LONG).show();
+                createMovieDetailsFragment();
                 Log.e(TAG, e.getMessage());
                 e.printStackTrace();
             }

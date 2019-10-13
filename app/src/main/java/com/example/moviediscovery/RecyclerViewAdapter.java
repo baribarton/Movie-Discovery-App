@@ -14,18 +14,17 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.squareup.picasso.Picasso;
 
+import java.util.List;
+
 import info.movito.themoviedbapi.model.MovieDb;
-import info.movito.themoviedbapi.model.core.MovieResultsPage;
 
 public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.TextViewHolder> {
     public static final String BASE_POSTER_PATH = "https://image.tmdb.org/t/p/original";
-    private MovieResultsPage movieResultsPage;
-    private int resultsCount;
+    private List<MovieDb> movies;
     private Context context;
 
-    public RecyclerViewAdapter(MovieResultsPage movieResultsPage, int resultsCount, Context context) {
-        this.movieResultsPage = movieResultsPage;
-        this.resultsCount = resultsCount;
+    public RecyclerViewAdapter(List<MovieDb> movies, Context context) {
+        this.movies = movies;
         this.context = context;
     }
 
@@ -38,7 +37,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
 
     @Override
     public void onBindViewHolder(@NonNull TextViewHolder holder, int position) {
-        MovieDb movie = movieResultsPage.getResults().get(position);
+        MovieDb movie = movies.get(position);
 
         DisplayMetrics displaymetrics = new DisplayMetrics();
         ((Activity) context).getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
@@ -46,21 +45,21 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
 
         Picasso.get()
                 .load(BASE_POSTER_PATH + movie.getPosterPath())
-                .resize(width / RecyclerViewFragment.COLUMNS, (int) ((width / RecyclerViewFragment.COLUMNS) * 1.5))
+                .resize(width / MoviesListFragment.COLUMNS, (int) ((width / MoviesListFragment.COLUMNS) * 1.5))
                 .placeholder(R.drawable.ic_launcher_background)
                 .into(holder.moviePosterImageButton);
 
         holder.moviePosterImageButton.setOnClickListener(v -> {
             Context context = holder.moviePosterImageButton.getContext();
             Intent intent = new Intent(context, MovieDetailsContainer.class);
-            intent.putExtra("MOVIE", movieResultsPage.getResults().get(position));
+            intent.putExtra("MOVIE", movies.get(position));
             context.startActivity(intent);
         });
     }
 
     @Override
     public int getItemCount() {
-        return resultsCount;
+        return movies.size();
     }
 
     static class TextViewHolder extends RecyclerView.ViewHolder {
@@ -71,5 +70,9 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
             super(view);
             moviePosterImageButton = view.findViewById(R.id.moviePoster);
         }
+    }
+
+    public void setMovies(List<MovieDb> movies) {
+        this.movies = movies;
     }
 }
