@@ -93,7 +93,9 @@ public class MoviesListFragment extends Fragment {
     }
 
     /**
-     * AsyncTask to fetch movies within a date range.
+     * AsyncTask to fetch movies within a date range. This would probably be better combined with a
+     * broadcast receiver so that there aren't any issues when this activity is recreated (such as
+     * on orientation change)
      */
     private static class MovieFetcher extends AsyncTask<Void, Void, List<MovieDb>> {
         private WeakReference<Activity> activityWeakReference;

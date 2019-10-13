@@ -63,7 +63,9 @@ public class MovieDetailsFragment extends Fragment {
     }
 
     /**
-     * AsyncTask to fetch the movie details
+     * AsyncTask to fetch the movie details. This would probably be better combined with a
+     * broadcast receiver so that there aren't any issues when this activity is recreated (such as
+     * on orientation change)
      */
     private static class MovieDetailsFetcher extends AsyncTask<Void, Void, MovieDb> {
 
