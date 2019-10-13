@@ -23,7 +23,7 @@
         </activity>
 
         <activity
-            android:name=".MovieDetails"
+            android:name=".MovieDetailsContainer"
             android:launchMode="singleTop"
             android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>

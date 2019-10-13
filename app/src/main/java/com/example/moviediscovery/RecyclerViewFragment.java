@@ -8,15 +8,14 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import info.movito.themoviedbapi.model.core.MovieResultsPage;
 
 public class RecyclerViewFragment extends Fragment {
-    private RecyclerView recyclerView;
-    private RecyclerView.Adapter mAdapter;
-    private RecyclerView.LayoutManager layoutManager;
+
+    public final static int COLUMNS = 2;
 
     @Nullable
     @Override
@@ -29,18 +28,15 @@ public class RecyclerViewFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         MovieResultsPage movieResultsPage = (MovieResultsPage) getArguments().getSerializable("movieResultsPage");
 
-        recyclerView = getActivity().findViewById(R.id.recycler_view);
-
-        // use this setting to improve performance if you know that changes
-        // in content do not change the layout size of the RecyclerView
+        RecyclerView recyclerView = getActivity().findViewById(R.id.recycler_view);
         recyclerView.setHasFixedSize(true);
 
         // use a linear layout manager
-        layoutManager = new LinearLayoutManager(getContext());
+        RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getContext(), COLUMNS);
         recyclerView.setLayoutManager(layoutManager);
 
         // specify an adapter (see also next example)
-        mAdapter = new RecyclerViewAdapter(movieResultsPage, 20);
+        RecyclerView.Adapter mAdapter = new RecyclerViewAdapter(movieResultsPage, 20, getContext());
         recyclerView.setAdapter(mAdapter);
     }
 }
